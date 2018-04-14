@@ -13,11 +13,22 @@
     v1.01           quadrature encoding without missing counts. New encoder.
     v1.02           Streamlined velocity calculation. 1D Serial Communication. 1D 1 CubeSat Deployment
     Next...           PID Tuning, 1D deployment with 2 CubeSat, ROS communication, 2D Deployment
+    
+Vernier pin _____color________arduino pin
+    Vpin1-----> yellow ------->
+    Vpin2-----> green -------->Ground
+    Vpin3-----> blue --------->Analog 4
+    Vpin4-----> purple ------->Analog 5
+    Vpin5-----> grey --------->VCC
+    Vpin6-----> white -------->Analog 1
 */
 
+#include <VernierLib.h>
 #include <TimerThree.h>
 #include <PID_v1.h>
 #include <Stepper.h>
+
+VernierLib Vernier;
 
 volatile double tension, output, setpoint, counter;
 volatile double currentTime = 0, lastTime = 0;
@@ -35,11 +46,11 @@ void setup() {
 
   Timer3.initialize();
   Timer3.attachInterrupt(control, 10000);                           //Timer1 overflows to trigger the interrupt every 0.01s
-  attachInterrupt(digitalPinToInterrupt(2), encoderA, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(3), encoderB, CHANGE);
   pinMode (outputA, INPUT);
   pinMode (outputB, INPUT);
-
+    
+  Vernier.autoID();
+    
   frictionDevice.SetMode(AUTOMATIC);
   frictionDevice.SetSampleTime(100);
   frictionDevice.SetOutputLimits(-100, 100); //~270 maximum
@@ -51,22 +62,23 @@ void setup() {
 }
 
 void loop() {
-
+   
   Serial.println(tension);
+    
   //  Serial.print("\t");
   //  Serial.print(output);
   //  Serial.print("\t");
   //  Serial.println(setpoint);
 
-  // Read in tension from vernier force sensor
-
+  tension = Vernier.readSensor();
+    
   if (output > 0) {                 // evaluate stepping for smooth output
-    posstepper.setSpeed(output);
-    posstepper.step(5);
+    posstepper.setSpeed(150);
+    posstepper.step(output);
   }
   else if (output < 0) {
-    negstepper.setSpeed(-output);
-    negstepper.step(5);
+    negstepper.setSpeed(150);
+    negstepper.step(-output);
   }
 }
 
