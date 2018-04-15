@@ -85,8 +85,6 @@ void encoderA() {//Read both bytes, trigger on A change. If both bytes are diffe
   }
 }
 
-}
-
 void control() {//Triggered by timer overflow. Must refresh slowly enough to completely run or will "lock" the rest of the program, never returning to the main loop.
   
   frictionDevice.Compute();
