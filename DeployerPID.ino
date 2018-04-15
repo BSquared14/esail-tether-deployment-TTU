@@ -17,9 +17,9 @@
 
 #include <TimerThree.h>
 #include <PID_v1.h>
-#include <Stepper.h>
+#include <Servo.h>
 
-volatile double velocity, output, setpoint, counter;
+volatile double velocity, output, setpoint, counter, counterx1, counterx2;
 volatile double currentTime = 0, lastTime = 0;
 #define outputA 2
 #define outputB 3
@@ -27,8 +27,6 @@ volatile double currentTime = 0, lastTime = 0;
 #define INTERRUPT 1
 bool aState, bState;
 
-Stepper posstepper(200, 6, 7, 8, 9);
-Stepper negstepper(200, 9, 8, 7, 6);
 PID frictionDevice(&velocity, &output, &setpoint, 1, 0, 1, DIRECT);
 
 void setup() {
@@ -43,36 +41,34 @@ void setup() {
   frictionDevice.SetSampleTime(100);
   frictionDevice.SetOutputLimits(-100, 100); //~270 maximum
 
-  setpoint = 100;
+  setpoint = 1;
   Serial.begin (9600);
   while (!Serial) {//Wait for USB serial to connect
   }
 }
 
 void loop() {
-
-  Serial.println(velocity);
-  //  Serial.print("\t");
-  //  Serial.println(velocity);
-  //  Serial.print("\t");
-  //  Serial.print(output);
-  //  Serial.print("\t");
-  //  Serial.println(setpoint);
+velCalc();
+  Serial.print(velocity);
+  Serial.print("\t");
+  Serial.println(output);
 
   if (output > 0) {// Insert Deployment Fans PWM control here
-  
+
+    //    esc.writeMicroseconds(
+
   }
   else if (output < 0) {
-  
+
   }
 }
 
 //interrupts are disabled during a triggered interrupt's subroutine. millis() is based on an interrupt, so it is actually flagged and executed after the current interrupt is finished.
 //The time period from the counter incrementing and the time actually being recorded is about 3 microseconds.
 void encoderA() {//Read both bytes, trigger on A change. If both bytes are different, increment.
-  velocity = 1000 / (currentTime - lastTime);  //re-evaluate this. Counts per second.
-  lastTime = currentTime;
-    
+//  velocity = 100 / (currentTime - lastTime);  ////re-evaluate this. Counts per second.
+//  lastTime = currentTime;
+
   aState = (PINE &= B00010000);
   bState = (PINE &= B00100000);
   if (aState && (!bState)) {                    //if A:1 B:0
@@ -85,8 +81,16 @@ void encoderA() {//Read both bytes, trigger on A change. If both bytes are diffe
   }
 }
 
+
+
 void control() {//Triggered by timer overflow. Must refresh slowly enough to completely run or will "lock" the rest of the program, never returning to the main loop.
-  
   frictionDevice.Compute();
+}
+
+void velCalc(){
+  counterx1=counter;
+delay(50);
+counterx2=counter;
+velocity=(counterx2-counterx1)/50;
 }
 
