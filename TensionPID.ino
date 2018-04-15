@@ -27,18 +27,20 @@ Vernier pin _____color________arduino pin
 #include <Timer3.h>
 #include <Stepper.h>
 #include <PID_v1.h>
+#include <TimerThree.h>
 
-double tension, output, setpoint, frictionForce;
-int angle = 0;
+double tension, output, setpoint, frictionForce, angle;
 
 Stepper lessT(200, 6, 7, 8, 9);
 Stepper moreT(200, 9, 8, 7, 6);
-PID frictionPID(&tension, &output, &setpoint, .12, 0, 0, DIRECT);
-frictionPID.SetMode(AUTOMATIC);
+PID frictionPID(&tension, &output, &setpoint, 1, 0, 0, DIRECT);
 
 void setup() {
+  Timer3.initialize();
+  Timer3.attachInterrupt(control, 10000); //(10 ms period)
   setpoint = 10;
-  frictionPID.SetOutputLimits(-10, 10);
+  frictionPID.SetMode(AUTOMATIC);
+  frictionPID.SetOutputLimits(-5, 5);
   Serial.begin(9600);
   Serial1.begin(9600);
 
@@ -46,30 +48,30 @@ void setup() {
 
 void loop() {
 
-  if (Serial1.available()) {
+  if (Serial1.available() >= 0) {
     tension = Serial1.read();
-    tension = (double) tension;
-    tension = map(tension, 0, 255, 0, 115.56);
+    if (tension > 60)
+      tension = 0;
   }
-
-  frictionPID.Compute();
   Serial.print(tension);
   Serial.print("\t");
-  Serial.print(angle);
-  Serial.print("\t");
   Serial.println(output);
-
+  delay(100);
 
   if (output >= 0) {
-    moreT.setSpeed(100);
+    moreT.setSpeed(200);
     moreT.step(output);
   }
 
   if (output < 0) {
-    lessT.setSpeed(100);
+    lessT.setSpeed(200);
     lessT.step(-output);
   }
 
+}
+
+void control() {
+  frictionPID.Compute();
 }
 
 //frictionForce=.00000004*pow(angle, 3)- .00004*pow(angle, 2)+ 0.014*angle-0.5275;
