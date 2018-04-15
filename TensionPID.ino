@@ -24,6 +24,7 @@ Vernier pin _____color________arduino pin
     Vpin6-----> white -------->Analog 1
 */
 
+#include <Timer3.h>
 #include <Stepper.h>
 #include <PID_v1.h>
 
@@ -33,10 +34,10 @@ int angle = 0;
 Stepper lessT(200, 6, 7, 8, 9);
 Stepper moreT(200, 9, 8, 7, 6);
 PID frictionPID(&tension, &output, &setpoint, .12, 0, 0, DIRECT);
+frictionPID.SetMode(AUTOMATIC);
 
 void setup() {
   setpoint = 10;
-  frictionPID.SetMode(AUTOMATIC);
   frictionPID.SetOutputLimits(-10, 10);
   Serial.begin(9600);
   Serial1.begin(9600);
