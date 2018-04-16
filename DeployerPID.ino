@@ -19,9 +19,9 @@
 #include <PID_v1.h>
 #include <Servo.h>
 
-volatile double velocity, output, setpoint, counter, counterx1, counterx2;
-int min = 1150;
-int max = 1650;
+volatile double velocity, output, setpoint, counter, counterx1, counterx2, t;
+int minimum = 1235;
+int maxaximum = 1600;
 
 #define outputA 2
 #define outputB 3
@@ -30,9 +30,12 @@ int max = 1650;
 bool aState, bState;
 
 Servo esc;
-PID frictionDevice(&velocity, &output, &setpoint, 1, 0, 1, DIRECT);
+Servo esch1;
+Servo esch2;
+PID frictionDevice(&velocity, &output, &setpoint, 100, 5, 1, P_ON_M, DIRECT);
 
 void setup() {
+
 
   Timer3.initialize();
   Timer3.attachInterrupt(control, 10000);                           //Timer1 overflows to trigger the interrupt every 0.01s
@@ -42,23 +45,37 @@ void setup() {
 
   frictionDevice.SetMode(AUTOMATIC);
   //frictionDevice.SetSampleTime(100);
-  frictionDevice.SetOutputLimits(-20, 450); //~270 maximum
+  frictionDevice.SetOutputLimits(-1, 363); //~270 maximum
 
-  setpoint = 1;
+  setpoint = .1;
   Serial.begin (9600);
   esc.attach(11);  //Specify here the pin number on which the signal pin of ESC is connected.
+  esch1.attach(12);
+  esch2.attach(13);
   esc.writeMicroseconds(1000);   //ESC arm command. ESCs won't start unless input speed is less during initialization.
-  delay(3000);              // delay time to initialize esc 
-  }
+  esch1.writeMicroseconds(1000);
+  esch2.writeMicroseconds(1000);
+  delay(3000);              // delay time to initialize esc
 }
 
+
 void loop() {
+  esch1.writeMicroseconds(1450);
+  esch2.writeMicroseconds(1400);
+//
+//  t = millis();
+//  if (t > 20000)
+//    setpoint = 0;
+
   velCalc();
   Serial.print(velocity);
   Serial.print("\t");
+  Serial.print(setpoint);
+  Serial.print("\t");
   Serial.println(output);
 
-  esc.writeMicroseconds(min+output);    
+  esc.writeMicroseconds(minimum + output);
+
 }
 
 //interrupts are disabled during a triggered interrupt's subroutine. millis() is based on an interrupt, so it is actually flagged and executed after the current interrupt is finished.
@@ -68,11 +85,9 @@ void encoderA() {//Read both bytes, trigger on A change. If both bytes are diffe
   bState = (PINE &= B00100000);
   if (aState && (!bState)) {                    //if A:1 B:0
     counter++;
-    currentTime = millis();
   }
   else if (aState && bState) {                  //if A:1 B:1
     counter--;
-    currentTime = millis();
   }
 }
 
@@ -80,10 +95,9 @@ void control() {//Triggered by timer overflow. Must refresh slowly enough to com
   frictionDevice.Compute();
 }
 
-void velCalc(){
-    counterx1=counter;
-    delay(50);
-    counterx2=counter;
-    velocity=(counterx2-counterx1)/50;
+void velCalc() {           //in .1 m/s
+  counterx1 = counter;
+  delay(50);
+  counterx2 = counter;
+  velocity = (counterx2 - counterx1) / 50;
 }
-
