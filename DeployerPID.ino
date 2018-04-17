@@ -46,9 +46,10 @@ void setup() {
   frictionDevice.SetMode(AUTOMATIC);
   //frictionDevice.SetSampleTime(100);
   frictionDevice.SetOutputLimits(-1, 363); //~270 maximum
-
   setpoint = .1;
+    
   Serial.begin (9600);
+  Serial1.begin (9600);
   esc.attach(11);  //Specify here the pin number on which the signal pin of ESC is connected.
   esch1.attach(12);
   esch2.attach(13);
