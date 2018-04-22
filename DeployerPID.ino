@@ -21,10 +21,9 @@
 #include <IRremote.h>
 //***********************************************************************************
 //                                 IR STUFF
-const int RECV_PIN = 10;
+const int RECV_PIN = 4;
 IRrecv irrecv(RECV_PIN);
 decode_results results;
-int value;
 int onoff = 0;
 //**********************************************************************************
 
@@ -39,8 +38,8 @@ int minimum = 1235;
 bool aState, bState;
 int goodspeed = 1235;
 
-Servo esc;
-PID frictionDevice(&velocity, &output, &setpoint, 500, 0, 0, DIRECT);
+Servo esc, sendsignal;
+PID frictionDevice(&velocity, &output, &setpoint, 500, 1, 10, DIRECT);
 
 void setup() {
   irrecv.enableIRIn();
@@ -53,39 +52,78 @@ void setup() {
 
   frictionDevice.SetMode(AUTOMATIC);
   //frictionDevice.SetSampleTime(100);
-  frictionDevice.SetOutputLimits(-100, 100); //~270 maximum
+  frictionDevice.SetOutputLimits(-100, 300); //~270 maximum
 
-  setpoint = .1;
+  setpoint = .5;
   Serial.begin (9600);
+  Serial1.begin(9600);
   esc.attach(11);  //Specify here the pin number on which the signal pin of ESC is connected.
   esc.writeMicroseconds(1600);  // front fan //ESC arm command. ESCs won't start unless input speed is less during initialization.
+
   delay(3000);              // delay time to initialize esc
   esc.writeMicroseconds(1100);
   delay(2000);
 }
 void loop() {
+
   if (irrecv.decode(&results)) {
     onoff++;
-    if (onoff == 1) {
-      function();
-    }
-
-    else if (onoff == 2) {
-      onoff = 0;
-    }
     irrecv.resume();
   }
+  esc.writeMicroseconds(1100);
+  sendsignal.writeMicroseconds(1100);
+
+  while (onoff == 1) {
+
+    if (irrecv.decode(&results)) {
+      onoff++;
+      irrecv.resume();
+    }
+
+
+    velCalc();
+    //    Serial.print(velocity);
+    //    Serial.print("\t");
+    //    Serial.print(output);
+    //    Serial.print("\t");
+    //    Serial.println(goodspeed);
+
+    if (goodspeed > 1600) {
+      goodspeed = 1600;
+    }
+
+    if ((goodspeed < 1600) | (output < 0)) {
+      goodspeed = output + goodspeed;
+      if (goodspeed < 1099) {
+        goodspeed = 1100;
+      }
+    }
+
+
+
+
+    goodspeed = map(goodspeed, 1100, 1600, 0, 255);
+    Serial1.write(goodspeed);
+    goodspeed = map(goodspeed, 0, 255, 1100, 1600);
+    esc.writeMicroseconds(goodspeed);
+    Serial.println(goodspeed);
+  }
+
+  onoff = 0;
 }
+
+
+
 //interrupts are disabled during a triggered interrupt's subroutine. millis() is based on an interrupt, so it is actually flagged and executed after the current interrupt is finished.
 //The time period from the counter incrementing and the time actually being recorded is about 3 microseconds.
 void encoderA() {//Read both bytes, trigger on A change. If both bytes are different, increment.
   aState = (PINE &= B00010000);
   bState = (PINE &= B00100000);
   if (aState && (!bState)) {                    //if A:1 B:0
-    counter++;
+    counter--;
   }
   else if (aState && bState) {                  //if A:1 B:1
-    counter--;
+    counter++;
   }
 }
 
@@ -98,22 +136,4 @@ void velCalc() {           //in .1 m/s
   delay(50);
   counterx2 = counter;
   velocity = (counterx2 - counterx1) / 50;
-}
-
-void function() {
-
-  velCalc();
-  Serial.print(velocity);
-  Serial.print("\t");
-  Serial.print(output);
-  Serial.print("\t");
-  Serial.println(goodspeed);
-
-  if ((goodspeed < 1600) | (output < 0)) {
-    goodspeed = output + goodspeed;
-    if (goodspeed < 1099) {
-      goodspeed = 1100;
-    }
-  }
-  esc.writeMicroseconds(goodspeed);
 }
