@@ -18,25 +18,33 @@
 #include <TimerThree.h>
 #include <PID_v1.h>
 #include <Servo.h>
+#include <IRremote.h>
+//***********************************************************************************
+//                                 IR STUFF
+const int RECV_PIN = 10;
+IRrecv irrecv(RECV_PIN);
+decode_results results;
+int value;
+int onoff = 0;
+//**********************************************************************************
 
 volatile double velocity, output, setpoint, counter, counterx1, counterx2, t;
 int minimum = 1235;
-int maxaximum = 1600;
+
 
 #define outputA 2
 #define outputB 3
 #define INTERRUPT 0
 #define INTERRUPT 1
 bool aState, bState;
+int goodspeed = 1235;
 
 Servo esc;
-Servo esch1;
-Servo esch2;
-PID frictionDevice(&velocity, &output, &setpoint, 100, 5, 1, P_ON_M, DIRECT);
+PID frictionDevice(&velocity, &output, &setpoint, 500, 0, 0, DIRECT);
 
 void setup() {
-
-
+  irrecv.enableIRIn();
+  irrecv.blink13(true);
   Timer3.initialize();
   Timer3.attachInterrupt(control, 10000);                           //Timer1 overflows to trigger the interrupt every 0.01s
   attachInterrupt(digitalPinToInterrupt(2), encoderA, CHANGE);
@@ -45,40 +53,29 @@ void setup() {
 
   frictionDevice.SetMode(AUTOMATIC);
   //frictionDevice.SetSampleTime(100);
-  frictionDevice.SetOutputLimits(-1, 363); //~270 maximum
+  frictionDevice.SetOutputLimits(-100, 100); //~270 maximum
+
   setpoint = .1;
-    
   Serial.begin (9600);
-  Serial1.begin (9600);
   esc.attach(11);  //Specify here the pin number on which the signal pin of ESC is connected.
-  esch1.attach(12);
-  esch2.attach(13);
-  esc.writeMicroseconds(1000);   //ESC arm command. ESCs won't start unless input speed is less during initialization.
-  esch1.writeMicroseconds(1000);
-  esch2.writeMicroseconds(1000);
+  esc.writeMicroseconds(1600);  // front fan //ESC arm command. ESCs won't start unless input speed is less during initialization.
   delay(3000);              // delay time to initialize esc
+  esc.writeMicroseconds(1100);
+  delay(2000);
 }
-
-
 void loop() {
-  esch1.writeMicroseconds(1450);
-  esch2.writeMicroseconds(1400);
-//
-//  t = millis();
-//  if (t > 20000)
-//    setpoint = 0;
+  if (irrecv.decode(&results)) {
+    onoff++;
+    if (onoff == 1) {
+      function();
+    }
 
-  velCalc();
-  Serial.print(velocity);
-  Serial.print("\t");
-  Serial.print(setpoint);
-  Serial.print("\t");
-  Serial.println(output);
-
-  esc.writeMicroseconds(minimum + output);
-
+    else if (onoff == 2) {
+      onoff = 0;
+    }
+    irrecv.resume();
+  }
 }
-
 //interrupts are disabled during a triggered interrupt's subroutine. millis() is based on an interrupt, so it is actually flagged and executed after the current interrupt is finished.
 //The time period from the counter incrementing and the time actually being recorded is about 3 microseconds.
 void encoderA() {//Read both bytes, trigger on A change. If both bytes are different, increment.
@@ -101,4 +98,22 @@ void velCalc() {           //in .1 m/s
   delay(50);
   counterx2 = counter;
   velocity = (counterx2 - counterx1) / 50;
+}
+
+void function() {
+
+  velCalc();
+  Serial.print(velocity);
+  Serial.print("\t");
+  Serial.print(output);
+  Serial.print("\t");
+  Serial.println(goodspeed);
+
+  if ((goodspeed < 1600) | (output < 0)) {
+    goodspeed = output + goodspeed;
+    if (goodspeed < 1099) {
+      goodspeed = 1100;
+    }
+  }
+  esc.writeMicroseconds(goodspeed);
 }
