@@ -20,9 +20,9 @@ VernierLib Vernier; //create an instance of the VernierLib library
 SoftwareSerial XBee(2, 3); // RX, TX
 
 void setup() {
-  Serial.begin(9600); //setup communication to display
+  Serial.begin(57600); //setup communication to display
   Vernier.autoID(); //identify the sensor being used
-  XBee.begin(9600);
+  XBee.begin(57600);
 }
 
 void loop() {
