@@ -55,8 +55,8 @@ void setup() {
   frictionDevice.SetOutputLimits(-100, 300); //~270 maximum
 
   setpoint = .5;
-  Serial.begin (9600);
-  Serial1.begin(9600);
+  Serial.begin (57600);
+  Serial1.begin(57600);
   esc.attach(11);  //Specify here the pin number on which the signal pin of ESC is connected.
   esc.writeMicroseconds(1600);  // front fan //ESC arm command. ESCs won't start unless input speed is less during initialization.
 
