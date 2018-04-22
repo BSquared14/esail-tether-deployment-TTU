@@ -31,10 +31,9 @@ Vernier pin _____color________arduino pin
 #include <IRremote.h>
 // *******************************************************************************
 //              IR STUFF
-const int RECV_PIN = 10;
+const int RECV_PIN = 4;
 IRrecv irrecv(RECV_PIN);
 decode_results results;
-int value;
 int onoff = 0;
 //****************************************************************************************
 double  tension, output, setpoint, frictionForce, angle;
@@ -49,6 +48,8 @@ PID frictionPID(&tension, &output, &setpoint, .5, 0, 0, DIRECT);
 void setup() {
   //  Timer3.initialize();
   //  Timer3.attachInterrupt(control, 10000); //(10 ms period)
+  irrecv.enableIRIn();
+  irrecv.blink13(true);
   setpoint = 30;
   frictionPID.SetMode(AUTOMATIC);
   frictionPID.SetOutputLimits(-10, 10);
@@ -57,51 +58,60 @@ void setup() {
 }
 
 void loop() {
+  Serial.println(onoff);
+
   if (irrecv.decode(&results)) {
     onoff++;
-    if (onoff == 1) {
-      function();
-    }
-
-    else if (onoff == 2) {
-      onoff = 0;
-    }
     irrecv.resume();
   }
-}
-
-//void control() {
-//  frictionPID.Compute();
-//}
 
 
-void function(){
-  frictionPID.Compute();
-  if (Serial1.available()) {
-    tension = Serial1.read();
-    tension = map(tension, 0, 255, 0, 115);
-  }
-  Serial.print(tension);
-  Serial.print("\t");
-  Serial.print(output);
-  Serial.print("\t");
-  Serial.println(stepcounter);
+  while (onoff == 1) {
+    Serial.print("im in the loop");
 
-  if (stepcounter < 400) {
-    if (output >= 0) {
+    if (irrecv.decode(&results)) {
+      onoff++;
+      irrecv.resume();
+    }
+
+    frictionPID.Compute();
+    if (Serial1.available()) {
+      tension = Serial1.read();
+      tension = map(tension, 0, 255, 0, 115);
+    }
+    Serial.print(tension);
+    Serial.print("\t");
+    Serial.print(output);
+    Serial.print("\t");
+    Serial.println(stepcounter);
+
+    if (stepcounter < 400) {
+      if (output >= 0) {
+        lessT.setSpeed(200);
+        moreT.step(output);
+        stepcounter = stepcounter + output;
+      }
+    }
+
+
+    if (output < 0) {
+       if (stepcounter >-400){
       moreT.setSpeed(200);
-      moreT.step(output);
+      moreT.step(-output);
       stepcounter = stepcounter + output;
     }
-  }
+}
 
-  if (output < 0) {
-    lessT.setSpeed(200);
-    lessT.step(-output);
-    stepcounter = stepcounter + output;
   }
+  onoff=0;
+  stepcounter=0;
 }
+
+void control() {
+  frictionPID.Compute();
 }
+
 
 //frictionForce=.00000004*pow(angle, 3)- .00004*pow(angle, 2)+ 0.014*angle-0.5275;
+
 
