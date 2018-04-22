@@ -1,11 +1,10 @@
 /*
-    Deployment_Control v1.02
+    Spinup Control v1.02
       HERTS Tether Deployment Model
       TTU Mechatronics - 4/9/2018
       Ben Brandt, Seth Shearman
       Thanks to Tristin Hill, Dr. Stephen Canfield, and the makers of the libraries used
-      This Arduino maintains a tether deployment velocity read from the ROS Master.
-      Deployment fan thrust is modulated to achieve this.
+      This Arduino maintains a tangential acceleration specified for each cubesat. Also initializes the hoverboard ESCS. 
     Changelog:
     v1.00           drop test, hardware initialization, encoder reading in interrupt, stepper functionality
     v1.01           quadrature encoding without missing counts. New encoder.
