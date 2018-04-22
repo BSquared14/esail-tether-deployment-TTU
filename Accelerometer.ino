@@ -18,6 +18,14 @@
 #include<Wire.h>
 #include<Servo.h>
 #include <IRremote.h>
+//***********************************************************************************
+//                                 IR STUFF
+const int RECV_PIN = 4;
+IRrecv irrecv(RECV_PIN);
+decode_results results;
+int value;
+int onoff = 0;
+//**********************************************************************************
 
 const int MPU_addr = 0x68; // I2C address of the MPU-6050
 double AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ, output, setpoint;
@@ -26,20 +34,13 @@ int leftspeed, rightspeed, i, AcYavg;
 double AccelerationY, AccelerationZ, RotationX;
 int minimum = 1225;
 
-// *******************************************************************************
-//              IR STUFF
-const int RECV_PIN = 10;
-IRrecv irrecv(RECV_PIN);
-decode_results results;
-int value;
-int onoff = 0;
-//****************************************************************************************
-
 PID straightPID(&RotationX, &output, &setpoint, .2, 0, 0, DIRECT);
 
 void setup() {
   Timer3.initialize();
   Timer3.attachInterrupt(control, 10000);
+  irrecv.enableIRIn();
+  irrecv.blink13(true);
 
   straightPID.SetMode(AUTOMATIC);
   straightPID.SetOutputLimits(-100, 100);
@@ -53,8 +54,8 @@ void setup() {
 
   escLeft.attach(11);
   escRight.attach(12);
-  escLeft.attach(5);
-  escRight.attach(6);
+  esch1.attach(5);
+  esch2.attach(6);
   esch1.writeMicroseconds(1000); //hoverboard 1
   esch2.writeMicroseconds(1000); //hoverboard 2
   escRight.writeMicroseconds(1500);
@@ -66,64 +67,72 @@ void setup() {
 }
 
 void loop() {
+
   if (irrecv.decode(&results)) {
     onoff++;
-    if (onoff == 1) {
-      function();
-    }
-
-    else if (onoff == 2) {
-      onoff = 0;
-    }
     irrecv.resume();
   }
+
+  esch1.writeMicroseconds(0); //hoverboard 1
+  esch2.writeMicroseconds(0); //hoverboard 2
+ 
+
+
+while (onoff == 1) {
+
+  if (irrecv.decode(&results)) {
+    onoff++;
+    irrecv.resume();
+  }
+
+
+  esch1.writeMicroseconds(1400); //hoverboard 1
+  esch2.writeMicroseconds(1400); //hoverboard 2
+
+//  Wire.beginTransmission(MPU_addr);
+//  Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
+//  Wire.endTransmission(false);
+//  Wire.requestFrom(MPU_addr, 14, true); // request a total of 14 registers
+//  AcX = Wire.read() << 8 | Wire.read(); // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)
+//  AcY = Wire.read() << 8 | Wire.read(); // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
+//  AcZ = Wire.read() << 8 | Wire.read(); // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
+//  GyX = Wire.read() << 8 | Wire.read(); // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
+//  GyY = Wire.read() << 8 | Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
+//  GyZ = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
+//
+//  AccelerationY = AcY + 290; // makes the running average around 0
+//  AccelerationZ = AcZ + 370; // makes the running average around 0
+//  RotationX = GyY + 360;
+//
+//  if ((RotationX > -1000) && (RotationX < 1000)) {
+//    RotationX = 0;
+//  }
+//  Serial.print(RotationX);
+//  Serial.print("\t");
+//  Serial.print(output);
+//  Serial.print("\t");
+//  Serial.print(leftspeed);
+//  Serial.print("\t");
+//  Serial.println(rightspeed);
+//
+//  if (output > 0) {
+//    leftspeed = 1325 + output;
+//    rightspeed = 1000;
+//    escLeft.writeMicroseconds(leftspeed);
+//    escRight.writeMicroseconds(rightspeed);
+//  }
+//
+//  if (output <= 0 ) {
+//    rightspeed = 1150 -  output;
+//    leftspeed = 1300;
+//    escRight.writeMicroseconds(rightspeed);
+//    escLeft.writeMicroseconds(leftspeed);
+//  }
 }
-  
+onoff = 0;
+}
+
 
 void control() {
   straightPID.Compute();
-}
-void function(){
-
-Wire.beginTransmission(MPU_addr);
-  Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
-  Wire.endTransmission(false);
-  Wire.requestFrom(MPU_addr, 14, true); // request a total of 14 registers
-  AcX = Wire.read() << 8 | Wire.read(); // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)
-  AcY = Wire.read() << 8 | Wire.read(); // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
-  AcZ = Wire.read() << 8 | Wire.read(); // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
-  GyX = Wire.read() << 8 | Wire.read(); // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
-  GyY = Wire.read() << 8 | Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
-  GyZ = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
-
-  AccelerationY = AcY + 290; // makes the running average around 0
-  AccelerationZ = AcZ + 370; // makes the running average around 0
-  RotationX = GyY + 360;
-
-  if ((RotationX > -1000) && (RotationX < 1000)) {
-    RotationX = 0;
-  }
-  Serial.print(RotationX);
-  Serial.print("\t");
-  Serial.print(output);
-  Serial.print("\t");
-  Serial.print(leftspeed);
-  Serial.print("\t");
-  Serial.println(rightspeed);
-
-  if (output > 0) {
-    leftspeed = 1325 + output;
-    rightspeed = 1000;
-    escLeft.writeMicroseconds(leftspeed);
-    escRight.writeMicroseconds(rightspeed);
-    delay(1000);
-  }
-
-  if (output <= 0 ) {
-    rightspeed = 1150 -  output;
-    leftspeed = 1300;
-    escRight.writeMicroseconds(rightspeed);
-    escLeft.writeMicroseconds(leftspeed);
-    delay(1000);
-  }
 }
